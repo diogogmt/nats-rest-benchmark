@@ -1,0 +1,16 @@
+{
+  "name": "node-proxy",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Diogo Monteiro <diogo.gmt@gmail.com> (http://diogogmt.com/)",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.13.4",
+    "nats": "^0.5.4",
+    "request": "^2.67.0"
+  }
+}
