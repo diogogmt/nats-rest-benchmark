@@ -1,0 +1,22 @@
+server:
+  image: nats
+  ports:
+  - "6222:6222"
+  - "4222:4222"
+  - "8222:8222"
+  environment:
+  - DNSDOCK_ALIAS=nats.server.local
+nodeproxy:
+  image: clouddynamics/node-js-debian
+  ports:
+  - "3000:3000"
+  volumes: 
+  - /usr/local/nats-poc/node-proxy:/usr/local/node-proxy
+goclient:
+  image: golang
+  ports:
+  - "4000:4000"
+  volumes: 
+  - /usr/local/nats-poc/go-client:/go/src/go-client
+  environment:
+  - DNSDOCK_ALIAS=go.client.local
