@@ -6,9 +6,11 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"log"
 	"net/http"
+	// "time"
 )
 
 func ListItems(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	// fmt.Printf("REST - Executing ListItems request - %s\n", time.Now())
 	w.Header().Set("Content-Type", "application/json")
 	itemsRes := ItemListResponse{
 		Items: getItems(),
@@ -21,6 +23,7 @@ func ListItems(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 }
 
 func ItemDetails(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+	// fmt.Printf("REST - Executing ItemDetails request - %s\n", time.Now())
 	w.Header().Set("Content-Type", "application/json")
 	itemReq := Item{Id: ps.ByName("id")}
 	item, err := itemReq.find()
@@ -43,7 +46,7 @@ func ItemDetails(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 func startRest() {
 	router := httprouter.New()
 	router.GET("/items", ListItems)
-	router.GET("/items/:name", ItemDetails)
+	router.GET("/items/:id", ItemDetails)
 	fmt.Println("Waiting for HTTP connections on port 8080")
-	log.Fatal(http.ListenAndServe(":8080", router))
+	log.Fatal(http.ListenAndServe(":4000", router))
 }

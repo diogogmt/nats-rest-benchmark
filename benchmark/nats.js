@@ -13,8 +13,8 @@ var flow = {
 };
 
 var runOptions = {
-  limit: 10,
-  iterations: 1000
+  limit: 1024,
+  iterations: 10240
 };
 
 benchrest(flow, runOptions)

@@ -2,11 +2,13 @@ package main
 
 import (
 	"fmt"
+	"runtime"
 )
 
 func main() {
 	fmt.Println("Starting nats client...")
 	go startNats()
 	fmt.Println("Starting rest server...")
-	startRest()
+	go startRest()
+	runtime.Goexit()
 }

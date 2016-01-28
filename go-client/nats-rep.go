@@ -3,63 +3,96 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/nats-io/nats"
-	"log"
+	nats "github.com/nats-io/nats"
+	"sync"
+	// "time"
 )
 
-func startNats() {
-	fmt.Println("Client waiting for connections...")
-	serverUrl := "nats://nats.server.local:4222"
-	fmt.Println("nats server URL: %v+", serverUrl)
-	natsConnection, _ := nats.Connect(serverUrl)
-	c, _ := nats.NewEncodedConn(natsConnection, nats.JSON_ENCODER)
-	defer c.Close()
+type Server struct {
+	NatsConn *nats.Conn
+}
 
-	natsConnection.Subscribe("listItems", func(msg *nats.Msg) {
+func (server *Server) NatsListItems(msg *nats.Msg) {
+	// fmt.Printf("NATS - Processing listItems request - %s\n", time.Now())
+	go func() {
+		// fmt.Printf("NATS - Executing listItems request - %s\n", time.Now())
+
+		var serviceReq ServiceRequest
+		json.Unmarshal(msg.Data, &serviceReq)
+
 		itemsRes := ItemListResponse{
 			Items: getItems(),
 		}
+		itemsJsonRes, _ := json.Marshal(itemsRes)
 
-		res, err := json.Marshal(itemsRes)
-		if err != nil {
-			log.Fatalln("Error marshaling JSON items %+v", err)
+		serviceRes := ServiceResponse{
+			RequestUUID: serviceReq.RequestUUID,
+			Data:        string(itemsJsonRes),
 		}
-		natsConnection.Publish(msg.Reply, res)
-	})
+		serviceJsonRes, _ := json.Marshal(serviceRes)
+		server.NatsConn.Publish(serviceReq.Reply, serviceJsonRes)
+	}()
+}
 
-	c.Subscribe("itemDetails", func(msg *nats.Msg) {
+func (server *Server) NatsItemDetails(msg *nats.Msg) {
+	// fmt.Printf("NATS - Processing itemDetails request - %s\n", time.Now())
+	go func() {
+		// fmt.Printf("NATS - Executing itemDetails request - %s\n", time.Now())
+		var serviceReq ServiceRequest
+		json.Unmarshal(msg.Data, &serviceReq)
+		dataByte := []byte(serviceReq.Data)
 		var itemReq Item
-		err := json.Unmarshal(msg.Data, &itemReq)
-		if err != nil {
-			msgRes := fmt.Sprintf("Error decoding request %s", itemReq.Id)
-			fmt.Println(msgRes)
-			errStruct := ErrorResponse{Err: ErrorResponseBody{HttpCode: 400, Message: msgRes}}
-			errRes, err := json.Marshal(errStruct)
-			if err != nil {
-				// If the json marshalling fails what res to send back to the client ?
-				return
-			}
-			natsConnection.Publish(msg.Reply, errRes)
-			return
-		}
+		json.Unmarshal(dataByte, &itemReq)
 
 		item, err := itemReq.find()
 		if err != nil {
 			errStruct := ErrorResponse{Err: ErrorResponseBody{HttpCode: 400, Message: err.Error()}}
-			errRes, err := json.Marshal(errStruct)
-			if err != nil {
-				// do something about it
+			errJson, _ := json.Marshal(errStruct)
+			serviceRes := ServiceResponse{
+				RequestUUID: serviceReq.RequestUUID,
+				Data:        string(errJson),
 			}
-			natsConnection.Publish(msg.Reply, errRes)
+			serviceResJson, _ := json.Marshal(serviceRes)
+			server.NatsConn.Publish(serviceReq.Reply, serviceResJson)
 			return
 		}
-		itemRes, err := json.Marshal(item)
-		if err != nil {
-			// do something about it
-		}
-		natsConnection.Publish(msg.Reply, itemRes)
-	})
+		itemJson, _ := json.Marshal(item)
 
-	donech := make(chan bool, 1)
-	<-donech
+		resJson := ServiceResponse{
+			RequestUUID: serviceReq.RequestUUID,
+			Data:        string(itemJson),
+		}
+		serviceJsonRes, _ := json.Marshal(resJson)
+		server.NatsConn.Publish(serviceReq.Reply, serviceJsonRes)
+	}()
+}
+
+func startNats() {
+	var servers = "nats://nats01.server.local:4222, nats://nats02.server.local:4223, nats://nats03.server.local:4224"
+	natsConnection, _ := nats.Connect(servers,
+		nats.ErrorHandler(func(nc *nats.Conn, sub *nats.Subscription, err error) {
+			fmt.Printf("Nats ErrorHandler\n")
+		}),
+		nats.ClosedHandler(func(nc *nats.Conn) {
+			fmt.Printf("Nats CloseHandler\n")
+		}),
+		nats.DisconnectHandler(func(nc *nats.Conn) {
+			fmt.Printf("Nats DisconnectHandler\n")
+		}),
+		nats.ReconnectHandler(func(nc *nats.Conn) {
+			fmt.Printf("Nats ReconnectHandler\n", nc.ConnectedUrl())
+		}))
+	defer natsConnection.Close()
+	fmt.Println("Client waiting for connections...")
+
+	server := Server{
+		NatsConn: natsConnection,
+	}
+
+	natsConnection.Subscribe("listItems", server.NatsListItems)
+	natsConnection.Subscribe("itemDetails", server.NatsItemDetails)
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	wg.Wait()
 }

@@ -13,6 +13,17 @@ type ErrorResponseBody struct {
 	HttpCode int    `json:"httpCode"`
 }
 
+type ServiceRequest struct {
+	RequestUUID string `json:"requestUUID"`
+	Reply       string `json:"reply"`
+	Data        string `json:"data"`
+}
+
+type ServiceResponse struct {
+	RequestUUID string `json:"requestUUID"`
+	Data        string `json:"data"`
+}
+
 type ItemListResponse struct {
 	Items []Item `json:"items"`
 }
