@@ -1,22 +1,50 @@
-server:
+server1:
   image: nats
   ports:
-  - "6222:6222"
-  - "4222:4222"
-  - "8222:8222"
+    - "4222"
+    - "7244"
+    - "8222"
+    - "6222"
   environment:
-  - DNSDOCK_ALIAS=nats.server.local
+    - DNSDOCK_ALIAS=nats01.server.local
+  volumes:
+    - /usr/local/nats-poc/gnatsd-A.conf:/tmp/cluster.conf
+  command: -c /tmp/cluster.conf -p 4222 -D -V
+server2:
+  image: nats
+  ports:
+    - "4223"
+    - "7246"
+    - "8222"
+    - "6222"
+  environment:
+    - DNSDOCK_ALIAS=nats02.server.local
+  volumes:
+    - /usr/local/nats-poc/gnatsd-B.conf:/tmp/cluster.conf  
+  command: -c /tmp/cluster.conf -p 4223 -D -V
+server3:
+  image: nats
+  ports:
+    - "4224"
+    - "7248"
+    - "8222"
+    - "6222"
+  environment:
+    - DNSDOCK_ALIAS=nats03.server.local
+  volumes:
+    - /usr/local/nats-poc/gnatsd-C.conf:/tmp/cluster.conf
+  command: -c /tmp/cluster.conf -p 4224 -D -V
 nodeproxy:
   image: clouddynamics/node-js-debian
   ports:
-  - "3000:3000"
+    - "3000:3000"
   volumes: 
-  - /usr/local/nats-poc/node-proxy:/usr/local/node-proxy
+    - /usr/local/nats-poc/node-proxy:/usr/local/node-proxy
 goclient:
   image: golang
   ports:
-  - "4000:4000"
+    - "4000:4000"
   volumes: 
-  - /usr/local/nats-poc/go-client:/go/src/go-client
+    - /usr/local/nats-poc/go-client:/go/src/go-client
   environment:
-  - DNSDOCK_ALIAS=go.client.local
+    - DNSDOCK_ALIAS=go.client.local
