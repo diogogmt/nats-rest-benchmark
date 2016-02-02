@@ -1,75 +1,53 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	nats "github.com/nats-io/nats"
 	"sync"
-	// "time"
 )
 
 type Server struct {
-	NatsConn *nats.Conn
+	NatsConn *nats.EncodedConn
 }
 
-func (server *Server) NatsListItems(msg *nats.Msg) {
-	// fmt.Printf("NATS - Processing listItems request - %s\n", time.Now())
+func (server *Server) NatsListItems(itemFilter *Item) {
 	go func() {
-		// fmt.Printf("NATS - Executing listItems request - %s\n", time.Now())
-
-		var serviceReq ServiceRequest
-		json.Unmarshal(msg.Data, &serviceReq)
-
-		itemsRes := ItemListResponse{
+		itemList := ItemList{
 			Items: getItems(),
+			Options: Options{
+				RequestUUID: itemFilter.Options.RequestUUID,
+			},
 		}
-		itemsJsonRes, _ := json.Marshal(itemsRes)
-
-		serviceRes := ServiceResponse{
-			RequestUUID: serviceReq.RequestUUID,
-			Data:        string(itemsJsonRes),
-		}
-		serviceJsonRes, _ := json.Marshal(serviceRes)
-		server.NatsConn.Publish(serviceReq.Reply, serviceJsonRes)
+		server.NatsConn.Publish(itemFilter.Options.Reply, itemList)
 	}()
 }
 
-func (server *Server) NatsItemDetails(msg *nats.Msg) {
-	// fmt.Printf("NATS - Processing itemDetails request - %s\n", time.Now())
+func (server *Server) NatsItemDetails(itemFilter *Item) {
 	go func() {
-		// fmt.Printf("NATS - Executing itemDetails request - %s\n", time.Now())
-		var serviceReq ServiceRequest
-		json.Unmarshal(msg.Data, &serviceReq)
-		dataByte := []byte(serviceReq.Data)
-		var itemReq Item
-		json.Unmarshal(dataByte, &itemReq)
-
-		item, err := itemReq.find()
+		item, err := itemFilter.find()
 		if err != nil {
-			errStruct := ErrorResponse{Err: ErrorResponseBody{HttpCode: 400, Message: err.Error()}}
-			errJson, _ := json.Marshal(errStruct)
-			serviceRes := ServiceResponse{
-				RequestUUID: serviceReq.RequestUUID,
-				Data:        string(errJson),
+			errResponse := Error{
+				HttpCode: 400,
+				Message: err.Error(),
+				Options: Options{
+					RequestUUID: itemFilter.Options.RequestUUID,
+				},
 			}
-			serviceResJson, _ := json.Marshal(serviceRes)
-			server.NatsConn.Publish(serviceReq.Reply, serviceResJson)
+			server.NatsConn.Publish(itemFilter.Options.Reply, errResponse)
 			return
 		}
-		itemJson, _ := json.Marshal(item)
-
-		resJson := ServiceResponse{
-			RequestUUID: serviceReq.RequestUUID,
-			Data:        string(itemJson),
+		item.Options = Options{
+			RequestUUID: itemFilter.Options.RequestUUID,
 		}
-		serviceJsonRes, _ := json.Marshal(resJson)
-		server.NatsConn.Publish(serviceReq.Reply, serviceJsonRes)
+		server.NatsConn.Publish(itemFilter.Options.Reply, item)
 	}()
 }
 
 func startNats() {
-	var servers = "nats://nats01.server.local:4222, nats://nats02.server.local:4223, nats://nats03.server.local:4224"
-	natsConnection, _ := nats.Connect(servers,
+	// Cluster
+//	var servers = "nats://nats01.cluster.local:4222, nats://nats02.cluster.local:4223, nats://nats03.cluster.local:4224"
+	var servers = "nats://nats.server.local:4222"
+	nc, _ := nats.Connect(servers,
 		nats.ErrorHandler(func(nc *nats.Conn, sub *nats.Subscription, err error) {
 			fmt.Printf("Nats ErrorHandler\n")
 		}),
@@ -82,6 +60,7 @@ func startNats() {
 		nats.ReconnectHandler(func(nc *nats.Conn) {
 			fmt.Printf("Nats ReconnectHandler\n", nc.ConnectedUrl())
 		}))
+	natsConnection, _ := nats.NewEncodedConn(nc, nats.JSON_ENCODER)
 	defer natsConnection.Close()
 	fmt.Println("Client waiting for connections...")
 

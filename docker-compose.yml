@@ -1,4 +1,4 @@
-server1:
+natsnodesingle:
   image: nats
   ports:
     - "4222"
@@ -6,11 +6,20 @@ server1:
     - "8222"
     - "6222"
   environment:
-    - DNSDOCK_ALIAS=nats01.server.local
+    - DNSDOCK_ALIAS=nats.server.local
+natsnodecluster1:
+  image: nats
+  ports:
+    - "4222"
+    - "7244"
+    - "8222"
+    - "6222"
+  environment:
+    - DNSDOCK_ALIAS=nats01.cluster.local
   volumes:
     - /usr/local/nats-poc/gnatsd-A.conf:/tmp/cluster.conf
   command: -c /tmp/cluster.conf -p 4222 -D -V
-server2:
+natsnodecluster2:
   image: nats
   ports:
     - "4223"
@@ -18,11 +27,13 @@ server2:
     - "8222"
     - "6222"
   environment:
-    - DNSDOCK_ALIAS=nats02.server.local
+    - DNSDOCK_ALIAS=nats02.cluster.local
   volumes:
     - /usr/local/nats-poc/gnatsd-B.conf:/tmp/cluster.conf  
   command: -c /tmp/cluster.conf -p 4223 -D -V
-server3:
+  links:
+    - natsnodecluster1
+natsnodecluster3:
   image: nats
   ports:
     - "4224"
@@ -30,16 +41,19 @@ server3:
     - "8222"
     - "6222"
   environment:
-    - DNSDOCK_ALIAS=nats03.server.local
+    - DNSDOCK_ALIAS=nats03.cluster.local
   volumes:
     - /usr/local/nats-poc/gnatsd-C.conf:/tmp/cluster.conf
   command: -c /tmp/cluster.conf -p 4224 -D -V
+  links:
+    - natsnodecluster1
+    - natsnodecluster2
 nodeproxy:
   image: clouddynamics/node-js-debian
   ports:
     - "3000:3000"
   volumes: 
-    - /usr/local/nats-poc/node-proxy:/usr/local/node-proxy
+    - /usr/local/nats-poc:/usr/local/nats-poc
 goclient:
   image: golang
   ports:

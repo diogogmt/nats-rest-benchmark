@@ -9,6 +9,7 @@
   "author": "Diogo Monteiro <diogo.gmt@gmail.com> (http://diogogmt.com/)",
   "license": "ISC",
   "dependencies": {
+    "bench-rest": "^1.1.1",
     "express": "^4.13.4",
     "nats": "^0.5.4",
     "node-uuid": "^1.4.7",

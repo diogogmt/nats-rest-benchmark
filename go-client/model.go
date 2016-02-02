@@ -4,34 +4,28 @@ import (
 	"errors"
 )
 
-type ErrorResponse struct {
-	Err ErrorResponseBody `json:"err"`
-}
-
-type ErrorResponseBody struct {
-	Message  string `json:"msg"`
-	HttpCode int    `json:"httpCode"`
-}
-
-type ServiceRequest struct {
+type Options struct {
 	RequestUUID string `json:"requestUUID"`
 	Reply       string `json:"reply"`
-	Data        string `json:"data"`
 }
 
-type ServiceResponse struct {
-	RequestUUID string `json:"requestUUID"`
-	Data        string `json:"data"`
-}
-
-type ItemListResponse struct {
-	Items []Item `json:"items"`
+type Error struct {
+	Message  string `json:"msg"`
+	HttpCode int    `json:"httpCode"`
+	Options Options `json:"options"`
 }
 
 type Item struct {
 	Id    string `json:"id"`
 	Name  string `json:"name"`
 	Brand string `json:"brand"`
+	Options Options `json:"options"`
+	Query interface{} `json:"query"`
+}
+
+type ItemList struct {
+	Items []Item `json:"items"`
+	Options Options `json:"options"`
 }
 
 func (item *Item) find() (Item, error) {

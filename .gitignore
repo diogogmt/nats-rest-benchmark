@@ -2,3 +2,4 @@
 /node-proxy/node_modules
 /node_modules
 /.idea
+/go-client/.idea

@@ -6,13 +6,11 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"log"
 	"net/http"
-	// "time"
 )
 
 func ListItems(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	// fmt.Printf("REST - Executing ListItems request - %s\n", time.Now())
 	w.Header().Set("Content-Type", "application/json")
-	itemsRes := ItemListResponse{
+	itemsRes := ItemList{
 		Items: getItems(),
 	}
 	res, err := json.Marshal(itemsRes)
@@ -23,24 +21,25 @@ func ListItems(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 }
 
 func ItemDetails(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	// fmt.Printf("REST - Executing ItemDetails request - %s\n", time.Now())
 	w.Header().Set("Content-Type", "application/json")
 	itemReq := Item{Id: ps.ByName("id")}
 	item, err := itemReq.find()
 	if err != nil {
-		errStruct := ErrorResponse{Err: ErrorResponseBody{HttpCode: 400, Message: err.Error()}}
+		errStruct := Error{HttpCode: 400, Message: err.Error()}
 		errRes, err := json.Marshal(errStruct)
 		if err != nil {
 			// do something about it
+			log.Fatalln("Error marshaling JSON items %+v", err)
 		}
 		w.Write(errRes)
 		return
 	}
-	itemRes, err := json.Marshal(item)
+	itemJson, err := json.Marshal(item)
 	if err != nil {
 		// do something about it
+		log.Fatalln("Error marshaling JSON items %+v", err)
 	}
-	w.Write(itemRes)
+	w.Write(itemJson)
 }
 
 func startRest() {
