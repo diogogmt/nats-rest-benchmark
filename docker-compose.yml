@@ -1,64 +1,89 @@
-natsnodesingle:
-  image: nats
-  ports:
-    - "4222"
-    - "7244"
-    - "8222"
-    - "6222"
-  environment:
-    - DNSDOCK_ALIAS=nats.server.local
-natsnodecluster1:
-  image: nats
-  ports:
-    - "4222"
-    - "7244"
-    - "8222"
-    - "6222"
-  environment:
-    - DNSDOCK_ALIAS=nats01.cluster.local
-  volumes:
-    - /usr/local/nats-poc/gnatsd-A.conf:/tmp/cluster.conf
-  command: -c /tmp/cluster.conf -p 4222 -D -V
-natsnodecluster2:
-  image: nats
-  ports:
-    - "4223"
-    - "7246"
-    - "8222"
-    - "6222"
-  environment:
-    - DNSDOCK_ALIAS=nats02.cluster.local
-  volumes:
-    - /usr/local/nats-poc/gnatsd-B.conf:/tmp/cluster.conf  
-  command: -c /tmp/cluster.conf -p 4223 -D -V
-  links:
-    - natsnodecluster1
-natsnodecluster3:
-  image: nats
-  ports:
-    - "4224"
-    - "7248"
-    - "8222"
-    - "6222"
-  environment:
-    - DNSDOCK_ALIAS=nats03.cluster.local
-  volumes:
-    - /usr/local/nats-poc/gnatsd-C.conf:/tmp/cluster.conf
-  command: -c /tmp/cluster.conf -p 4224 -D -V
-  links:
-    - natsnodecluster1
-    - natsnodecluster2
-nodeproxy:
-  image: clouddynamics/node-js-debian
-  ports:
-    - "3000:3000"
-  volumes: 
-    - /usr/local/nats-poc:/usr/local/nats-poc
-goclient:
-  image: golang
-  ports:
-    - "4000:4000"
-  volumes: 
-    - /usr/local/nats-poc/go-client:/go/src/go-client
-  environment:
-    - DNSDOCK_ALIAS=go.client.local
+version: '2'
+services:
+  natsserver:
+    image: nats
+    ports:
+      - "4222"
+      - "7244"
+      - "8222"
+      - "6222"
+    networks:
+      default:
+        aliases:
+          - server.nats
+  natscluster1:
+    image: nats
+    ports:
+      - "4222"
+      - "7244"
+      - "8222"
+      - "6222"
+    networks:
+      default:
+        aliases:
+          - cluster01.nats
+    volumes:
+      - /usr/local/nats-poc/gnatsd-A.conf:/tmp/cluster.conf
+    command: -c /tmp/cluster.conf -p 4222 -D -V
+  natscluster2:
+    image: nats
+    ports:
+      - "4223"
+      - "7246"
+      - "8222"
+      - "6222"
+    networks:
+      default:
+        aliases:
+          - cluster02.nats
+    depends_on:
+          - natscluster1
+    volumes:
+      - /usr/local/nats-poc/gnatsd-B.conf:/tmp/cluster.conf
+
+    command: -c /tmp/cluster.conf -p 4223 -D -V
+  natscluster3:
+    image: nats
+    ports:
+      - "4224"
+      - "7248"
+      - "8222"
+      - "6222"
+    networks:
+      default:
+        aliases:
+          - cluster03.nats
+    depends_on:
+      - natscluster1
+      - natscluster2
+    volumes:
+      - /usr/local/nats-poc/gnatsd-C.conf:/tmp/cluster.conf
+    command: -c /tmp/cluster.conf -p 4224 -D -V
+  client:
+    image: node:5.10.1
+    networks:
+      default:
+        aliases:
+          - client01
+    volumes:
+      - /root/misc/nats-rest-benchmark/client:/root/client
+  proxy:
+    image: node:5.10.1
+    ports:
+      - "8000:8000"
+    networks:
+      default:
+        aliases:
+          - proxy01
+    volumes:
+      - /root/misc/nats-rest-benchmark/proxy:/root/proxy
+  service:
+      image: node:5.10.1
+      ports:
+        - "3000:3000"
+      networks:
+        default:
+          aliases:
+            - service01
+      volumes:
+        - /root/misc/nats-rest-benchmark/service:/root/service
